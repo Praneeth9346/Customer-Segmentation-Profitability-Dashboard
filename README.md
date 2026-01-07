@@ -36,7 +36,7 @@ A full-stack data analytics project that transforms raw retail data into actiona
   
 ## 📂 Project Structure
 
-```text
+```
 Customer-Segmentation-Profitability-Dashboard/
 ├── src/
 │   ├── db_manager.py        # Handles SQL connections and queries
@@ -69,7 +69,8 @@ Click the "🚀 Generate & Load Dummy Data" button in the sidebar.
 
 The app will generate 1,500 rows of transaction data and populate the SQL database automatically.
 
-📊 Analytics Approach
+```
+**📊 Analytics Approach
 This project moves beyond simple CSV analysis by implementing a robust "Data Analyst" workflow:
 
 Ingest: Raw data is generated and loaded into a relational database (SQLite).
@@ -79,4 +80,4 @@ Query: Key metrics are derived using SQL aggregation queries (GROUP BY, SUM, COU
 Visualize: Insights are rendered using interactive Plotly charts for user exploration.
 
 🤝 Contributing
-Contributions are welcome! Please fork the repository and submit a pull request for any enhancements.
+Contributions are welcome! Please fork the repository and submit a pull request for any enhancements.**
