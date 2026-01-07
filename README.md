@@ -33,11 +33,11 @@ A full-stack data analytics project that transforms raw retail data into actiona
 * **Dashboard Framework:** Streamlit
 * **Visualization:** Plotly Express
 * **Data Manipulation:** Pandas, NumPy
-
+  
 ## 📂 Project Structure
 
 ```text
-RetailDashboard/
+Customer-Segmentation-Profitability-Dashboard/
 ├── src/
 │   ├── db_manager.py        # Handles SQL connections and queries
 │   └── data_generator.py    # Generates synthetic e-commerce data
