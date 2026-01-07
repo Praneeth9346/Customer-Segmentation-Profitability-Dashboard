@@ -1,90 +1,107 @@
 import streamlit as st
 import plotly.express as px
+import pandas as pd
+import os
 from src.db_manager import DatabaseManager
 
-# Config
+# --- CONFIG ---
 st.set_page_config(page_title="Retail Insights", layout="wide")
+st.title("📊 Customer Segmentation & Profitability Dashboard")
+
+# Initialize DB
 db = DatabaseManager()
 
-# Sidebar: Load Data
-st.sidebar.header("Settings")
-uploaded_file = st.sidebar.file_uploader("Upload Superstore CSV", type=['csv'])
+# --- SIDEBAR: DATA LOADING ---
+st.sidebar.header("Data Setup")
 
-if uploaded_file:
-    # Save temp file to load into DB
-    with open("data/temp_data.csv", "wb") as f:
-        f.write(uploaded_file.getbuffer())
+# check if data exists
+data_path = 'data/superstore.csv'
+if os.path.exists(data_path):
+    if st.sidebar.button("Load/Reset Database"):
+        status = db.load_csv_to_db(data_path)
+        st.sidebar.success(status)
+else:
+    st.sidebar.error("No data found! Run generate_data.py first.")
+
+# --- MAIN DASHBOARD ---
+
+# 1. KPI SECTION (SQL Aggregations)
+st.subheader("Executive Overview")
+try:
+    # We use a try-block in case the DB is empty
+    kpi_df = db.run_query("SELECT SUM(Sales) as Total_Sales, SUM(Profit) as Total_Profit FROM orders")
     
-    status = db.load_csv_to_db("data/temp_data.csv")
-    st.sidebar.success(status)
+    if not kpi_df.empty and kpi_df.iloc[0,0] is not None:
+        sales = kpi_df.iloc[0,0]
+        profit = kpi_df.iloc[0,0]
+        margin = (profit / sales) * 100
 
-    # --- TAB 1: EXECUTIVE SUMMARY (SQL SKILLS) ---
-    st.title("📊 Executive Sales Dashboard")
-    
-    # KPI Queries
-    total_sales = db.run_query("SELECT SUM(Sales) as Total FROM orders").iloc[0,0]
-    total_profit = db.run_query("SELECT SUM(Profit) as Total FROM orders").iloc[0,0]
-    profit_margin = (total_profit / total_sales) * 100
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Total Revenue", f"${sales:,.2f}")
+        c2.metric("Total Profit", f"${profit:,.2f}")
+        c3.metric("Profit Margin", f"{margin:.1f}%")
+    else:
+        st.info("Please click 'Load/Reset Database' in the sidebar.")
+        st.stop()
 
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Total Sales", f"${total_sales:,.2f}")
-    c2.metric("Total Profit", f"${total_profit:,.2f}")
-    c3.metric("Profit Margin", f"{profit_margin:.2f}%")
+except:
+    st.warning("Database not initialized. Click button in sidebar.")
+    st.stop()
 
-    # SQL Aggregation for Charts
-    # "Which Region is most profitable?"
-    df_region = db.run_query("""
-        SELECT Region, SUM(Sales) as Sales, SUM(Profit) as Profit 
-        FROM orders 
-        GROUP BY Region 
-        ORDER BY Profit DESC
-    """)
-    
-    st.subheader("Regional Performance")
-    fig = px.bar(df_region, x="Region", y=["Sales", "Profit"], barmode="group")
-    st.plotly_chart(fig, use_container_width=True)
+st.markdown("---")
 
-    # --- TAB 2: RFM ANALYSIS (ANALYTICAL SKILLS) ---
-    st.markdown("---")
-    st.title("👥 Customer Segmentation (RFM)")
-    
-    # RFM Query: The complex part!
-    # Recency: Days since last order
-    # Frequency: Count of orders
-    # Monetary: Sum of Sales
-    rfm_query = """
-    SELECT 
-        Customer_ID, 
-        MAX(Order_Date) as Last_Order_Date,
-        COUNT(DISTINCT Order_ID) as Frequency,
-        SUM(Sales) as Monetary
-    FROM orders
-    GROUP BY Customer_ID
-    """
-    df_rfm = db.run_query(rfm_query)
-    
-    # Simple Segmentation Logic (Python)
-    # In a real job, you'd use quantiles, but here's a simple rule-based approach:
-    # High Value: Frequency > 5 AND Monetary > 1000
-    def segment_customer(row):
-        if row['Frequency'] >= 5 and row['Monetary'] > 2000:
-            return 'Gold (Loyal)'
-        elif row['Frequency'] >= 2:
-            return 'Silver (Regular)'
-        else:
-            return 'Bronze (New/Churned)'
+# 2. REGIONAL PERFORMANCE
+c1, c2 = st.columns(2)
 
+with c1:
+    st.subheader("📍 Profitability by Region")
+    df_region = db.run_query("SELECT Region, SUM(Profit) as Profit FROM orders GROUP BY Region ORDER BY Profit DESC")
+    fig1 = px.bar(df_region, x='Region', y='Profit', color='Profit', color_continuous_scale='Viridis')
+    st.plotly_chart(fig1, use_container_width=True)
+
+with c2:
+    st.subheader("📦 Sales by Category")
+    df_cat = db.run_query("SELECT Category, SUM(Sales) as Sales FROM orders GROUP BY Category")
+    fig2 = px.pie(df_cat, names='Category', values='Sales', hole=0.4)
+    st.plotly_chart(fig2, use_container_width=True)
+
+# 3. RFM CUSTOMER SEGMENTATION (The Advanced Part)
+st.markdown("---")
+st.subheader("👥 Customer Segmentation (RFM Analysis)")
+st.markdown("Identifying **High-Value** customers vs. **Churn Risk** using SQL & Python.")
+
+# The Complex Query
+rfm_query = """
+SELECT 
+    Customer_ID,
+    COUNT(Order_ID) as Frequency,
+    SUM(Sales) as Monetary
+FROM orders
+GROUP BY Customer_ID
+"""
+df_rfm = db.run_query(rfm_query)
+
+# Business Logic for Segmentation
+def segment_customer(row):
+    if row['Monetary'] > 3000 and row['Frequency'] > 10:
+        return '🥇 Gold (VIP)'
+    elif row['Monetary'] > 1000:
+        return '🥈 Silver (Regular)'
+    else:
+        return '🥉 Bronze (New/Low)'
+
+if not df_rfm.empty:
     df_rfm['Segment'] = df_rfm.apply(segment_customer, axis=1)
 
-    c1, c2 = st.columns(2)
-    with c1:
-        st.write("Customer Segments Distribution")
-        fig_pie = px.pie(df_rfm, names='Segment', title="Customer Segments")
-        st.plotly_chart(fig_pie)
+    col1, col2 = st.columns([1, 2])
     
-    with c2:
-        st.write("Top 5 'Gold' Customers")
-        st.dataframe(df_rfm[df_rfm['Segment'] == 'Gold (Loyal)'].sort_values('Monetary', ascending=False).head(5))
+    with col1:
+        st.write("**Segment Distribution**")
+        fig3 = px.pie(df_rfm, names='Segment', color='Segment', 
+                      color_discrete_map={'🥇 Gold (VIP)': 'gold', '🥈 Silver (Regular)': 'silver', '🥉 Bronze (New/Low)': '#cd7f32'})
+        st.plotly_chart(fig3, use_container_width=True)
 
-else:
-    st.info("Please upload the Superstore CSV to begin.")
+    with col2:
+        st.write("**Top 5 VIP Customers (Actionable List)**")
+        vip_df = df_rfm[df_rfm['Segment'] == '🥇 Gold (VIP)'].sort_values('Monetary', ascending=False).head(5)
+        st.dataframe(vip_df, use_container_width=True)
