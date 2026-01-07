@@ -49,8 +49,8 @@ Clone the Repository
 
 Bash
 
-git clone [https://github.com/](https://github.com/)[YourUsername]/RetailDashboard.git
-cd RetailDashboard
+git clone [https://github.com/Praneeth9346/Customer-Segmentation-Profitability-Dashboard/tree/main]
+cd Customer-Segmentation-Profitability-Dashboard
 Install Dependencies
 
 Bash
