@@ -63,13 +63,14 @@ Bash
 streamlit run app.py
 Initialize Data
 
+```
 Once the app opens in your browser, look for the warning "Database is empty!".
 
 Click the "🚀 Generate & Load Dummy Data" button in the sidebar.
 
 The app will generate 1,500 rows of transaction data and populate the SQL database automatically.
 
-```
+
 **📊 Analytics Approach
 This project moves beyond simple CSV analysis by implementing a robust "Data Analyst" workflow:
 
